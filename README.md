@@ -8,7 +8,7 @@ It does not delete files, clear logs, restart services, request elevated privile
 
 **Language support:** the documentation is available in English and Simplified Chinese. CLI help, terminal output, and JSON field names are currently Chinese. There is no `--lang` option yet. Keep the Chinese filenames in the commands below unchanged.
 
-**Development status:** version 0.1.2 is still undergoing validation. It includes fixes for low file-descriptor limits, repeated cancellation, path replacement during a check, and memory growth across repeated scans. The 0.1.1 results below are historical records, not evidence that 0.1.2 has completed validation.
+**Validation status:** version 0.1.2 has completed the Linux validation described below. It fixes failures under low file-descriptor limits, repeated cancellation, path replacement during checks, and memory growth across repeated scans. The validated scope and remaining limitations are listed explicitly.
 
 ## Quick start
 
@@ -61,18 +61,23 @@ Reports may contain paths, process names, and container identifiers. Review them
 
 ## Validation and limitations
 
-The following are **historical version 0.1.1 integration results**, recorded on 2026-09-03. Each combination passed 147 automated tests and 133 assertions across 19 real scenarios, with no skips or failures. Those scenarios covered disk and inode exhaustion, permissions, mount boundaries, Docker storage and log rotation, concurrent object disappearance, timeouts, cancellation, and report saving.
+Version **0.1.2** completed the following isolated Linux validation on 2026-09-03. Automated tests had no failures or skips in these Linux environments.
 
-| System | Architecture | Python | Docker |
+| Environment | Automated tests | Real integration scenarios | Sustained load |
 |---|---|---|---|
-| Ubuntu 24.04.4 | ARM64 | 3.12.3 | 29.1.3 |
-| Debian 12.15 | ARM64 | 3.11.2 | 20.10.24 |
-| Debian 12.15 | ARM64 | 3.10.21, built from official source | 20.10.24 |
-| Debian 12.15 | x86_64, full-system software emulation | 3.11.2 | 20.10.24 |
+| Ubuntu 24.04.4 ARM64 / Python 3.12.3 / Docker 29.1.3 | 154 passed | 21 scenarios, 161 assertions passed | 600.553 seconds, 339 CLI calls |
+| Debian 12.15 ARM64 / Python 3.11.2 / Docker 20.10.24 | 154 passed | 21 scenarios, 161 assertions passed | 600.372 seconds, 324 CLI calls |
+| Debian 12.15 ARM64 / Python 3.10.21 | 154 passed | Not repeated with this interpreter for 0.1.2 | Not repeated with this interpreter for 0.1.2 |
 
-The x86_64 integration environment used a full Debian kernel under software emulation; it did not validate native hardware performance. The historical 0.1.1 macOS development run passed 144 of 147 tests and skipped three Linux-only tests. It is not evidence of Linux integration behavior. GitHub Actions unit tests are separate from these integration records.
+Each load test used 100,000 real files, sparse files and hard links, with allocated bytes checked against GNU `du`. Source and single-file entries both exercised scans, report saving, timeouts and cancellation, including two consecutive interrupts. Across the two completed runs there were 663 CLI calls and 110,734 synthetic file changes. Sample and source fingerprints stayed unchanged, with no residual check processes or cleanup errors.
 
-Windows, remote or rootless Docker, using a container as a substitute for host inspection, and snapshot/storage-pool reconciliation are outside the initial scope. Real production workloads, long-term large-scale behavior, and adoption by external users have not been validated. Passing tests cannot establish correctness in every environment.
+Repeated scans kept file descriptors at 4 and showed no growth in peak RSS over 12 scans: 33,468 KiB on Ubuntu and 32,136 KiB on Debian. Sampled process-tree RSS peaked at 56.19 MiB and 66.63 MiB respectively; this is sampled aggregate RSS, not exact private memory.
+
+An earlier Debian run failed a test expectation during log rotation. The tool correctly reported partial results without inventing a zero size, but the test required metadata on every call. The corrected test requires explicit unknown values during changes, metadata on at least 95% of full calls under this controlled load, and an exact native `stat` comparison after rotation stops. The full rerun passed, with metadata in all 260 full calls. The original failed run is retained locally and excluded from the completed-run totals. See the [validation record](文档/验收说明.md) for the fixes and test boundaries.
+
+The macOS development run passed 147 of 154 tests and skipped seven Linux-only tests; macOS is not supported for scanning. Version 0.1.1 was previously tested in a complete x86_64 software-emulated Debian system; that historical result is not a repeat of the full 0.1.2 integration suite. GitHub Actions runs unit and interface tests separately from the VM integration tests.
+
+Ten-minute tests do not establish long-term production stability. Real production data, long-term large-scale workloads, native x86_64 Docker/mount/load scenarios, other system and Docker versions, and adoption by external users remain unverified. Windows, remote or rootless Docker, using a container as a substitute for host inspection, and snapshot/storage-pool reconciliation are outside the initial scope.
 
 Detailed references are currently in Chinese: [known limitations](文档/已知限制.md), [report format](文档/报告格式.md), [validation requirements](文档/验收说明.md), and a [synthetic report example](文档/报告示例.txt).
 
