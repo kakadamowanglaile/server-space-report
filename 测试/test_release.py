@@ -33,7 +33,8 @@ class ReleaseTests(unittest.TestCase):
         project.mkdir()
         for name in ("代码", "测试", "工具", "文档"):
             shutil.copytree(ROOT / name, project / name, ignore=shutil.ignore_patterns("__pycache__"))
-        for name in ("README.md", "LICENSE", ".gitignore", "更新记录.md"):
+        for name in ("README.md", "README.zh-CN.md", "CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md",
+                     "LICENSE", ".gitignore", "更新记录.md"):
             shutil.copy2(ROOT / name, project / name)
         return project
 
@@ -84,6 +85,10 @@ class ReleaseTests(unittest.TestCase):
                 self.assertTrue(any(name.endswith("代码/空间去哪了.py") for name in names))
                 self.assertTrue(any(name.endswith("测试/test_cli.py") for name in names))
                 self.assertTrue(any(name.endswith("/.gitignore") for name in names))
+                for document in ("README.md", "README.zh-CN.md", "CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md"):
+                    member = f"服务器空间去哪了-{__version__}/{document}"
+                    self.assertIn(member, names)
+                    self.assertEqual(archive.read(member), (ROOT / document).read_bytes())
                 self.assertFalse(any(any(part in name for part in ["测试环境/", "报告/", ".pyc", "__pycache__", "ssh.config", "_config/"]) for name in names))
             manifest = json.loads((Path(folder) / "发布清单.json").read_text())
             self.assertEqual(len(manifest["文件"]), 2)

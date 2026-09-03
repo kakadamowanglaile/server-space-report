@@ -1,112 +1,87 @@
-# 服务器空间去哪了
+# Server Space Report
 
-0.1.2 追加验收正在进行：已修正低文件描述符额度、连续两次取消、检查途中路径被替换及重复扫描内存增长的问题。下方 0.1.1 数字仅是历史测试记录；新版交付以持续负载验收记录为准。
+**English** | [简体中文](README.zh-CN.md)
 
-一次运行的 Linux 本机只读空间报告。查看分区、大目录、系统日志、Docker 分类及已删除但仍被进程打开的文件。
+**服务器空间去哪了** is a read-only disk-space reporting tool for a local Linux server. It helps you inspect filesystem usage, large directories, system journals, Docker storage, and deleted files that are still held open by a process.
 
-它不删除文件、不清空日志、不重启服务、不自动提权、不上传信息。无需模型接口、账号或第三方 Python 包。默认只显示结果，不保存文件。
+It does not delete files, clear logs, restart services, request elevated privileges, or upload information. It needs no AI service, account, or third-party Python package. By default, it prints results without saving a report.
 
-## 使用
+**Language support:** the documentation is available in English and Simplified Chinese. CLI help, terminal output, and JSON field names are currently Chinese. There is no `--lang` option yet. Keep the Chinese filenames in the commands below unchanged.
 
-需要 Python 3.10 或更新版本。源码包解压后，在项目目录执行：
+**Development status:** version 0.1.2 is still undergoing validation. It includes fixes for low file-descriptor limits, repeated cancellation, path replacement during a check, and memory growth across repeated scans. The 0.1.1 results below are historical records, not evidence that 0.1.2 has completed validation.
+
+## Quick start
+
+Requires **Linux and Python 3.10 or later**. Clone this repository or extract a source archive, then run these commands from the project root:
 
 ```sh
 python3 -B 代码/空间去哪了.py
 python3 -B 代码/空间去哪了.py --path /var --deep
-python3 -B 代码/空间去哪了.py --path / --timeout 30 --output ./排查报告
+python3 -B 代码/空间去哪了.py --path / --timeout 30 --output ./reports
 ```
 
-单文件包同样需要 Python，下载到本地后执行：
+The tool creates an independent `空间报告-*` directory when `--output` is supplied, containing `报告.txt` and `报告.json`. Existing reports are not overwritten.
+
+The single-file `.pyz` build also requires Python. If you have downloaded or built that artifact, run:
 
 ```sh
 python3 服务器空间去哪了-0.1.2.pyz --help
-python3 服务器空间去哪了-0.1.2.pyz --path /var --deep --output ./排查报告
+python3 服务器空间去哪了-0.1.2.pyz --path /var --deep --output ./reports
 ```
 
-程序不会自动安装缺失依赖。系统日志检查需要 `journalctl`，Docker 检查需要本机 Docker CLI 和 `/var/run/docker.sock`；缺失会明确显示，其他检查仍继续。普通用户可用，但可能看不到系统日志、容器数据和其他用户的进程。管理员权限由使用者自行决定，程序不会请求密码或自动提权。
+See [Releases](https://github.com/kakadamowanglaile/server-space-report/releases) for published artifacts and their validation notes. A version mentioned in the source tree may still be a development version.
 
-| 参数 | 用途 |
+The system-journal check requires `journalctl`. Docker checks require the local Docker CLI and `/var/run/docker.sock`. Missing tools are reported explicitly; other checks continue. Nothing is installed automatically. An ordinary user can run the tool, but may not be able to inspect all journals, container data, or other users' processes. The tool never asks for a password or elevates privileges itself.
+
+## Options and exit codes
+
+| Option | Behavior |
 |---|---|
-| 无参数 | 基础检查，不遍历目录树 |
-| `--path 目录` | 检查该目录所在分区，默认 `/`；路径不能经过符号链接 |
-| `--deep` | 主动遍历目标目录，显示前 20 个大目录；不跨子挂载点，不跟随符号链接 |
-| `--timeout 秒数` | 单项检查上限，默认 30 秒；返回部分结果可能额外需要短暂交接时间 |
-| `--output 目录` | 创建独立时间戳子目录，保存 `报告.txt` 与 `报告.json`，不覆盖旧报告；路径不可经过符号链接 |
-| `--version` | 版本号 |
-| `Ctrl+C` | 取消后续检查；已显示结果保留，指定输出目录时保存部分报告 |
+| No options | Basic checks without traversing the directory tree |
+| `--path DIRECTORY` | Check the filesystem containing the directory; defaults to `/`; symlink components are rejected |
+| `--deep` | Traverse the selected directory and show the top 20 large directories; do not follow symlinks or cross submounts |
+| `--timeout SECONDS` | Per-check time limit, default 30 seconds; returning partial results may require a short additional handoff interval |
+| `--output DIRECTORY` | Save text and JSON reports in a new timestamped subdirectory; symlink components are rejected |
+| `--version` | Show the version |
+| `Ctrl+C` | Cancel remaining checks; preserve displayed results and save partial results if an output directory was requested |
 
-退出码：`0` 表示所有已执行检查完成；`1` 表示至少一项未完成、权限不足或超时，应查看分项说明；`2` 表示参数、运行系统或报告保存失败；`130` 表示用户取消。普通用户运行时因部分数据不可见而返回 `1`，仍可阅读其他已完成结果。
+Exit codes: `0` means all executed checks completed; `1` means at least one check is incomplete, denied, timed out, or failed; `2` means invalid arguments, an unsupported operating system, or a report-saving failure; `130` means cancellation. Exit code `1` can occur for ordinary users with limited permissions; completed results remain useful.
 
-## 怎么看结果
+## Interpreting the report
 
-- **分区空间**是整个文件系统的用量；指定 `/var` 不会把它变成 `/var` 独占的分区。
-- **大目录**只在 `--deep` 开启后采集，按实际分配块统计。硬链接只计一次，因此跨目录硬链接的占用归属受遍历顺序影响。
-- **系统日志**是当前身份可见的活动及归档日志汇总，不读取正文，也不能按指定目录精确分摊。
-- **Docker**分类是该本地守护进程的全局量。Docker 展示大小经过格式化，换算字节属于估算；其“可回收”不等于业务上可删。
-- **已删除仍占用**按文件系统查找文件描述符持有的已删除普通文件。多个进程打开同一个文件只计一次，不覆盖仅由内存映射持有的情况。
+- **Filesystem usage** describes the entire filesystem. Selecting `/var` does not make those totals exclusive to `/var`.
+- **Large directories** are collected only with `--deep` and use allocated blocks. Hard links are counted once; attribution across directories depends on traversal order.
+- **System journals** cover active and archived journals visible to the current user. Journal contents are not read, and their usage cannot be assigned precisely to the selected directory.
+- **Docker categories** describe the local daemon as a whole. Values derived from Docker's formatted output are estimates. A Docker value marked reclaimable is not a recommendation to delete it.
+- **Deleted but open files** are located through Linux process file descriptors on the selected filesystem. Multiple references are deduplicated. Files retained only by memory mappings are not covered.
 
-这些数字可能包含相同内容，不要相加，也不要据此直接删除数据。权限不足、工具缺失、超时和失败都不等于占用为零。
+These numbers can overlap: **do not add them together or treat them as deletion instructions**. Unknown, denied, timed-out, and failed results do not mean zero usage.
 
-报告可能包含路径、进程名和容器标识，分享前请检查。只读指不主动修改被检查对象；目录读取可能影响访问时间，系统可能记录审计日志。目录扫描会产生读取负载，超大目录可缩小范围检查。
+Reports may contain paths, process names, and container identifiers. Review them before sharing. Read-only means the tool does not intentionally modify the inspected objects; directory reads may update access times or produce OS audit records. Deep scans also generate read load, so use a narrower path for very large trees.
 
-## 支持与边界
+## Validation and limitations
 
-2026-09-03，0.1.1 的以下四个运行组合完成实际验收：每个组合均通过 147 项自动测试，以及 19 组真实场景的 133 条断言，无跳过、无失败。覆盖容量和文件数量耗尽、权限差异、挂载边界、共享镜像层、非空构建缓存、多日志驱动与压缩轮转、并发对象消失、超时、取消和报告保存。
+The following are **historical version 0.1.1 integration results**, recorded on 2026-09-03. Each combination passed 147 automated tests and 133 assertions across 19 real scenarios, with no skips or failures. Those scenarios covered disk and inode exhaustion, permissions, mount boundaries, Docker storage and log rotation, concurrent object disappearance, timeouts, cancellation, and report saving.
 
-| 系统 | 架构 | Python | Docker |
+| System | Architecture | Python | Docker |
 |---|---|---|---|
 | Ubuntu 24.04.4 | ARM64 | 3.12.3 | 29.1.3 |
 | Debian 12.15 | ARM64 | 3.11.2 | 20.10.24 |
-| Debian 12.15 | ARM64 | 3.10.21（官方源码编译） | 20.10.24 |
-| Debian 12.15 | x86_64（完整系统软件模拟） | 3.11.2 | 20.10.24 |
+| Debian 12.15 | ARM64 | 3.10.21, built from official source | 20.10.24 |
+| Debian 12.15 | x86_64, full-system software emulation | 3.11.2 | 20.10.24 |
 
-x86_64 使用完整 Debian 内核的软件模拟，未验证原生 x86_64 硬件或生产性能。macOS 仅用于开发检查（147 项中 144 通过、3 项 Linux 专用测试跳过），不作为 Linux 功能证明。Windows、远程 Docker、无根 Docker、容器内替代主机检查、快照与存储池对账不在首版范围。实际生产数据、长期大规模负载和外部用户采用尚未验证；测试通过不代表所有环境都绝无问题。
+The x86_64 integration environment used a full Debian kernel under software emulation; it did not validate native hardware performance. The historical 0.1.1 macOS development run passed 144 of 147 tests and skipped three Linux-only tests. It is not evidence of Linux integration behavior. GitHub Actions unit tests are separate from these integration records.
 
-更多边界见 [已知限制](文档/已知限制.md)，结构化字段见 [报告格式](文档/报告格式.md)，文字样式见 [人工构造的示例](文档/报告示例.txt)。
+Windows, remote or rootless Docker, using a container as a substitute for host inspection, and snapshot/storage-pool reconciliation are outside the initial scope. Real production workloads, long-term large-scale behavior, and adoption by external users have not been validated. Passing tests cannot establish correctness in every environment.
 
-## 开发与测试
+Detailed references are currently in Chinese: [known limitations](文档/已知限制.md), [report format](文档/报告格式.md), [validation requirements](文档/验收说明.md), and a [synthetic report example](文档/报告示例.txt).
 
-```sh
-python3 -B -m unittest discover -s 测试 -v
-python3 -B 工具/构建发布包.py
-```
+## Contributing and support
 
-测试临时文件仅写入项目内的 `测试环境/临时`。真实 Linux 测试需要一次性隔离环境，绝不在业务服务器制造磁盘耗尽；步骤见 [验收说明](文档/验收说明.md)。
+Open an [issue](https://github.com/kakadamowanglaile/server-space-report/issues) with your operating system, Python version, command, expected behavior, and actual result. Share only the necessary, redacted details.
 
-源码包通过白名单打包，不包含虚拟机、测试密钥、下载缓存或真实机器报告。项目使用 [MIT 许可证](LICENSE)：允许使用、修改和分发，包括商业用途；分发时须保留版权及许可声明，软件不提供担保。以许可证规范原文为准。
+See the [contribution guide](CONTRIBUTING.md) for development, tests, the fork workflow, and what can be committed. Keep both language versions of the documentation in sync. The [changelog](更新记录.md) is currently in Chinese.
 
-项目仓库：[kakadamowanglaile/server-space-report](https://github.com/kakadamowanglaile/server-space-report)。当前主分支包含仍在验证中的开发版本；源码公开不代表该版本已完成验收，正式版本以 Releases 和对应验证说明为准。项目未提交任何资格申请，软件可用不等于获得项目资助资格。
+## License
 
-## 在 GitHub 持续维护
-
-日常开发可以继续使用现有本地目录。保存文件不会自动上传；只有提交（commit）并推送（push）后，GitHub 才会更新。
-
-1. 在 Issues 记录一个待修复问题或新功能，说明复现步骤和预期结果。
-2. 从最新 `main` 创建独立分支，在分支中修改代码和相关测试。
-3. 执行上面的单元测试命令，检查 `git diff`，只暂存本次需要的文件。
-4. 提交并推送分支，创建 Pull Request；检查 Actions 的测试结果和变更内容后合并到 `main`。
-5. 版本达到对应验收要求后创建版本标签和 Release，附更新说明、核对过的源码包和单文件包。
-
-在没有未提交改动时，可以从以下命令开始；分支名、文件路径和提交说明按实际任务填写：
-
-```sh
-git switch main
-git pull --ff-only
-git switch -c fix/report-output
-# 修改相关文件并执行测试
-python3 -B -m unittest discover -s 测试 -v
-git diff
-# 只添加本次需要提交的文件，然后检查暂存区
-git add -- <文件路径>
-git diff --cached
-git commit -m "说明本次修改"
-git push -u origin HEAD
-```
-
-每次推送或创建 Pull Request，GitHub Actions 会在 Ubuntu 24.04 上使用 Python 3.10、3.11、3.12 执行单元与接口测试。该自动检查不执行需要管理员身份的隔离验收脚本，也不代替 Docker、挂载、持续负载等实际验收。
-
-### 上传范围
-
-源码、测试代码、通用文档、人工构造的示例、许可证和自动测试配置可以提交。`测试环境/`、`报告/`、本地 `发布包/`、虚拟磁盘、下载缓存、SSH 私钥、密码、API Token、Cookie、Webhook 和含真实机器信息的报告不得直接提交。发现问题时，只在 Issue 中提供已脱敏的必要片段。
-
-`.gitignore` 已排除已知本地目录、常见凭据文件和自动生成的 `空间报告-*` 目录，但不能识别写在源码里的密码，也不会自动移除历史提交中的内容。每次推送前仍需检查暂存区；不要使用 `git add -f` 绕过这些规则。可分发的发布包应通过白名单构建、完成检查后作为 Release 附件单独上传。
+[MIT](LICENSE). Source archives use an explicit allowlist and exclude virtual machines, test keys, download caches, and real machine reports.

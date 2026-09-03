@@ -96,7 +96,8 @@ def _snapshot():
                 elif entry.name.endswith(".py"):
                     read_file(entry.name, directory, child_name)
     try:
-        for name in ["README.md", "LICENSE", ".gitignore", "更新记录.md", "文档/已知限制.md",
+        for name in ["README.md", "README.zh-CN.md", "CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md",
+                     "LICENSE", ".gitignore", "更新记录.md", "文档/已知限制.md",
                      "文档/报告格式.md", "文档/验收说明.md", "文档/报告示例.txt", "工具/构建发布包.py"]:
             read_relative(name)
         for name in ("代码", "测试"):
