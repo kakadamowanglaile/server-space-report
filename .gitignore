@@ -2,6 +2,33 @@
 测试环境/
 报告/
 发布包/
+
+# 命令行生成的真实报告，包括通过 --output 指定的其他目录。
+排查报告/
+空间报告-*/
+
+# 本地凭据；示例配置仅可填写占位符。
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+id_ecdsa
+.ssh/
+
+# 开发缓存与下载的虚拟磁盘。
+.venv/
+venv/
+*.qcow2
+*.vmdk
+*.vdi
+*.iso
+*.log
 __pycache__/
 *.pyc
 .DS_Store
