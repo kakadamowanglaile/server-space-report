@@ -112,6 +112,35 @@ class ReleaseTests(unittest.TestCase):
             self.assertNotIn("Traceback", result.stderr)
             self.assertEqual(list(Path(folder).iterdir()), [])
 
+    def test_delivery_check_creates_missing_temporary_parent(self):
+        # 新克隆没有被忽略的测试环境时，交付核对也应能自行创建临时目录。
+        project = self.project_copy()
+        shutil.rmtree(project / "测试")
+        (project / "测试").mkdir()
+        (project / "测试/test_smoke.py").write_text(
+            "import unittest\n\nclass SmokeTests(unittest.TestCase):\n"
+            "    def test_package_can_be_checked(self):\n        self.assertTrue(True)\n",
+            encoding="utf-8",
+        )
+        release = project / "发布"
+        candidate = project / "候选"
+        candidate.mkdir()
+        build = [sys.executable, "-B", str(project / "工具/构建发布包.py"), "--output", str(release)]
+        built = subprocess.run(build, capture_output=True, text=True, timeout=10)
+        self.assertEqual(built.returncode, 0, built.stderr)
+        runtime = next(release.glob("*.pyz"))
+        shutil.copy2(runtime, candidate / runtime.name)
+        temporary_parent = project / "测试环境" / "临时"
+        self.assertFalse(temporary_parent.exists())
+        checked = subprocess.run(
+            [sys.executable, "-B", str(project / "工具/核对交付包.py"),
+             "--release", str(release), "--candidate", str(candidate), "--test-count", "1"],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+        self.assertIn('"核对通过": true', checked.stdout)
+        self.assertTrue(temporary_parent.is_dir())
+
     def test_missing_license_cannot_create_a_release(self):
         parent = ROOT / "测试环境/临时"
         parent.mkdir(parents=True, exist_ok=True)

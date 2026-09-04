@@ -55,7 +55,9 @@ def check(release, candidate, expected_tests):
         assert result.returncode == expected, commands[-1]
         return result
 
-    with tempfile.TemporaryDirectory(prefix="正式交付核对-", dir=ROOT / "测试环境/临时") as directory:
+    temporary_parent = ROOT / "测试环境" / "临时"
+    temporary_parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="正式交付核对-", dir=temporary_parent) as directory:
         directory = Path(directory)
         with zipfile.ZipFile(release / (prefix + "-源码.zip")) as archive:
             archive.extractall(directory)
@@ -67,7 +69,7 @@ def check(release, candidate, expected_tests):
             run([sys.executable, "-B", str(entry), "--timeout", "0"], extracted, 2)
         tests = run([sys.executable, "-B", "-W", "error::ResourceWarning", "-m", "unittest",
                      "discover", "-s", "测试", "-p", "test_*.py", "-v"], extracted, 0, timeout=180)
-        assert f"Ran {expected_tests} tests" in tests.stderr, "测试数量变化，需重新核对验收报告"
+        assert f"Ran {expected_tests} test" in tests.stderr, "测试数量变化，需重新核对验收报告"
     return {"版本": version, "核对通过": True, "运行包成员数": len(runtime), "源码包成员数": len(source),
             "运行代码与实测候选逐成员一致": True, "源码与当前白名单逐成员一致": True,
             "发布清单": manifest, "运行环境": sys.version, "命令结果": commands}
