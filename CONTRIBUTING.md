@@ -57,6 +57,8 @@ python3 -B 工具/构建发布包.py
 
 Test temporary files live under `测试环境/临时`. The build command creates artifacts under `发布包/`; these directories are ignored by Git. The source archive must contain both README files and both contribution guides, with working relative links. Preserve the builder's explicit allowlist.
 
+Source archives also include `工具/核对交付包.py` for checking release hashes, source contents, runtime consistency with a validated candidate, and the extracted test suite. Run `python3 -B 工具/核对交付包.py --help` for its options. Supply the release directory with `--release`, the validated candidate directory with `--candidate`, and the expected total test count from that candidate's validation record with `--test-count`. The count is required: do not reuse a historical number or change it merely to make a failed check pass. Revalidate a changed test suite before using its new count. The checker must run from the source tree used to build the release; later source changes require a new build in a separate directory.
+
 GitHub Actions runs unit and interface tests on Ubuntu 24.04 with Python 3.10, 3.11, and 3.12 for pushes and pull requests. It does not run the privileged integration scripts. A passing CI result does not replace actual Docker, mount, exhaustion, or sustained-load validation. See the [validation requirements (Chinese)](文档/验收说明.md) before performing integration tests; use a disposable, isolated environment without business data. Record failures and skips accurately.
 
 ## Commit and open a pull request

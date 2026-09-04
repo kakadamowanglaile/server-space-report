@@ -77,6 +77,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="核对本项目正式交付与冻结候选，不修改两者")
     parser.add_argument("--release", type=Path, required=True)
     parser.add_argument("--candidate", type=Path, required=True)
-    parser.add_argument("--test-count", type=int, default=150)
+    parser.add_argument("--test-count", type=int, required=True,
+                        help="候选验收记录中的预期测试总数；必须明确指定，不沿用历史默认值")
     args = parser.parse_args()
     print(json.dumps(check(args.release.resolve(), args.candidate.resolve(), args.test_count), ensure_ascii=False, indent=2))

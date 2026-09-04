@@ -98,7 +98,8 @@ def _snapshot():
     try:
         for name in ["README.md", "README.zh-CN.md", "CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md",
                      "LICENSE", ".gitignore", "更新记录.md", "文档/已知限制.md",
-                     "文档/报告格式.md", "文档/验收说明.md", "文档/报告示例.txt", "工具/构建发布包.py"]:
+                     "文档/报告格式.md", "文档/验收说明.md", "文档/报告示例.txt", "工具/构建发布包.py",
+                     "工具/核对交付包.py"]:
             read_relative(name)
         for name in ("代码", "测试"):
             directory = _directory(name, root_fd)

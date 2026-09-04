@@ -85,6 +85,7 @@ class ReleaseTests(unittest.TestCase):
                 self.assertTrue(any(name.endswith("代码/空间去哪了.py") for name in names))
                 self.assertTrue(any(name.endswith("测试/test_cli.py") for name in names))
                 self.assertTrue(any(name.endswith("/.gitignore") for name in names))
+                self.assertTrue(any(name.endswith("/工具/核对交付包.py") for name in names))
                 for document in ("README.md", "README.zh-CN.md", "CONTRIBUTING.md", "CONTRIBUTING.zh-CN.md"):
                     member = f"服务器空间去哪了-{__version__}/{document}"
                     self.assertIn(member, names)
@@ -95,6 +96,21 @@ class ReleaseTests(unittest.TestCase):
             self.assertTrue(all(len(item["SHA256"]) == 64 for item in manifest["文件"]))
             for item in manifest["文件"]:
                 self.assertEqual(item["SHA256"], hashlib.sha256((Path(folder) / item["名称"]).read_bytes()).hexdigest())
+
+    def test_delivery_check_requires_test_count_before_reading_artifacts(self):
+        # 未声明预期测试数量时，应在读取交付包前拒绝核对，不能沿用旧数量。
+        parent = ROOT / "测试环境/临时"
+        parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=parent) as folder:
+            result = subprocess.run(
+                [sys.executable, "-B", str(ROOT / "工具/核对交付包.py"),
+                 "--release", str(Path(folder) / "release"),
+                 "--candidate", str(Path(folder) / "candidate")],
+                capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertIn("--test-count", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertEqual(list(Path(folder).iterdir()), [])
 
     def test_missing_license_cannot_create_a_release(self):
         parent = ROOT / "测试环境/临时"
