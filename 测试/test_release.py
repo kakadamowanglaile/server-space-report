@@ -140,6 +140,12 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(checked.returncode, 0, checked.stderr)
         self.assertIn('"核对通过": true', checked.stdout)
         self.assertTrue(temporary_parent.is_dir())
+        optimized = subprocess.run(
+            [sys.executable, "-O", str(project / "工具/核对交付包.py"),
+             "--release", str(release), "--candidate", str(candidate), "--test-count", "0"],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertNotEqual(optimized.returncode, 0, "优化模式不能跳过测试数量校验")
 
     def test_missing_license_cannot_create_a_release(self):
         parent = ROOT / "测试环境/临时"

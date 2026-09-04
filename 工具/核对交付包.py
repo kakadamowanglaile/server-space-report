@@ -13,15 +13,20 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
 def members(path):
     with zipfile.ZipFile(path) as archive:
         names = archive.namelist()
-        assert len(names) == len(set(names)), "归档含重复成员"
+        require(len(names) == len(set(names)), "归档含重复成员")
         for entry in archive.infolist():
             name = PurePosixPath(entry.filename)
-            assert not name.is_absolute() and ".." not in name.parts, "归档路径不安全"
-            assert ((entry.external_attr >> 16) & 0o170000) != 0o120000, "归档含符号链接"
-        assert archive.testzip() is None, "归档校验失败"
+            require(not name.is_absolute() and ".." not in name.parts, "归档路径不安全")
+            require(((entry.external_attr >> 16) & 0o170000) != 0o120000, "归档含符号链接")
+        require(archive.testzip() is None, "归档校验失败")
         return {name: archive.read(name) for name in names}
 
 
@@ -29,12 +34,12 @@ def check(release, candidate, expected_tests):
     manifest = json.loads((release / "发布清单.json").read_text(encoding="utf-8"))
     version = manifest["版本"]
     prefix = "服务器空间去哪了-" + version
-    assert len(manifest["文件"]) == 2
+    require(len(manifest["文件"]) == 2, "发布清单必须列出两个文件")
     for entry in manifest["文件"]:
-        assert Path(entry["名称"]).name == entry["名称"]
+        require(Path(entry["名称"]).name == entry["名称"], "发布清单文件名必须是单层路径")
         content = (release / entry["名称"]).read_bytes()
-        assert len(content) == entry["字节"]
-        assert hashlib.sha256(content).hexdigest() == entry["SHA256"]
+        require(len(content) == entry["字节"], "发布文件字节数与清单不一致")
+        require(hashlib.sha256(content).hexdigest() == entry["SHA256"], "发布文件 SHA256 与清单不一致")
 
     spec = importlib.util.spec_from_file_location("delivery_builder", ROOT / "工具/构建发布包.py")
     builder = importlib.util.module_from_spec(spec)
@@ -42,9 +47,9 @@ def check(release, candidate, expected_tests):
     snapshot = builder._snapshot()
     runtime = members(release / (prefix + ".pyz"))
     source = members(release / (prefix + "-源码.zip"))
-    assert source == {prefix + "/" + name: data for name, data in snapshot.items()}, "发布源码与当前白名单内容不同"
-    assert runtime == {name[len("代码/"):]: data for name, data in snapshot.items() if name.startswith("代码/")}
-    assert runtime == members(candidate / (prefix + ".pyz")), "正式运行代码不同于Linux实测候选"
+    require(source == {prefix + "/" + name: data for name, data in snapshot.items()}, "发布源码与当前白名单内容不同")
+    require(runtime == {name[len("代码/"):]: data for name, data in snapshot.items() if name.startswith("代码/")}, "运行包与当前白名单内容不同")
+    require(runtime == members(candidate / (prefix + ".pyz")), "正式运行代码不同于Linux实测候选")
 
     commands = []
     def run(argv, cwd, expected, timeout=90):
@@ -52,7 +57,7 @@ def check(release, candidate, expected_tests):
                                 errors="backslashreplace", timeout=timeout)
         commands.append({"命令": [str(x) for x in argv], "退出码": result.returncode,
                          "标准输出": result.stdout, "标准错误": result.stderr})
-        assert result.returncode == expected, commands[-1]
+        require(result.returncode == expected, commands[-1])
         return result
 
     temporary_parent = ROOT / "测试环境" / "临时"
@@ -64,12 +69,12 @@ def check(release, candidate, expected_tests):
         extracted = directory / prefix
         for entry in (release / (prefix + ".pyz"), extracted / "代码/空间去哪了.py"):
             help_result = run([sys.executable, "-B", str(entry), "--help"], extracted, 0)
-            assert "--deep" in help_result.stdout and "只读空间报告" in help_result.stdout
-            assert version in run([sys.executable, "-B", str(entry), "--version"], extracted, 0).stdout
+            require("--deep" in help_result.stdout and "只读空间报告" in help_result.stdout, "运行入口帮助内容不完整")
+            require(version in run([sys.executable, "-B", str(entry), "--version"], extracted, 0).stdout, "运行入口版本不匹配")
             run([sys.executable, "-B", str(entry), "--timeout", "0"], extracted, 2)
         tests = run([sys.executable, "-B", "-W", "error::ResourceWarning", "-m", "unittest",
                      "discover", "-s", "测试", "-p", "test_*.py", "-v"], extracted, 0, timeout=180)
-        assert f"Ran {expected_tests} test" in tests.stderr, "测试数量变化，需重新核对验收报告"
+        require(f"Ran {expected_tests} test" in tests.stderr, "测试数量变化，需重新核对验收报告")
     return {"版本": version, "核对通过": True, "运行包成员数": len(runtime), "源码包成员数": len(source),
             "运行代码与实测候选逐成员一致": True, "源码与当前白名单逐成员一致": True,
             "发布清单": manifest, "运行环境": sys.version, "命令结果": commands}
