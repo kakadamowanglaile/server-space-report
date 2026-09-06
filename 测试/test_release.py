@@ -147,6 +147,21 @@ class ReleaseTests(unittest.TestCase):
         )
         self.assertNotEqual(optimized.returncode, 0, "优化模式不能跳过测试数量校验")
 
+        # 两条记录必须分别覆盖运行包和源码包，不能重复同一个有效摘要。
+        manifest_path = release / "发布清单.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["文件"] = [manifest["文件"][0]] * 2
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        for mode in ("-B", "-O"):
+            with self.subTest(duplicate_manifest_mode=mode):
+                rejected = subprocess.run(
+                    [sys.executable, mode, str(project / "工具/核对交付包.py"),
+                     "--release", str(release), "--candidate", str(candidate), "--test-count", "1"],
+                    capture_output=True, text=True, timeout=30,
+                )
+                self.assertNotEqual(rejected.returncode, 0, "重复记录不能代替缺失的源码包摘要")
+                self.assertIn("发布清单必须分别列出运行包和源码包", rejected.stderr)
+
     def test_missing_license_cannot_create_a_release(self):
         parent = ROOT / "测试环境/临时"
         parent.mkdir(parents=True, exist_ok=True)

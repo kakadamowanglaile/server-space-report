@@ -35,6 +35,9 @@ def check(release, candidate, expected_tests):
     version = manifest["版本"]
     prefix = "服务器空间去哪了-" + version
     require(len(manifest["文件"]) == 2, "发布清单必须列出两个文件")
+    require({entry["名称"] for entry in manifest["文件"]} ==
+            {prefix + ".pyz", prefix + "-源码.zip"},
+            "发布清单必须分别列出运行包和源码包，且各出现一次")
     for entry in manifest["文件"]:
         require(Path(entry["名称"]).name == entry["名称"], "发布清单文件名必须是单层路径")
         content = (release / entry["名称"]).read_bytes()
