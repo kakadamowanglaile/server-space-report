@@ -8,7 +8,7 @@ import subprocess
 import time
 from decimal import Decimal, InvalidOperation
 
-from .common import run_command
+from .common import DirectoryTarget, run_command
 
 
 _ENV = {"LC_ALL": "C"}
@@ -77,7 +77,8 @@ def _command(argv, timeout, *, server_errors=False):
 
 def _same_filesystem(path, target):
     try:
-        return os.stat(path).st_dev == os.stat(target).st_dev
+        target_info = os.fstat(target.descriptor) if isinstance(target, DirectoryTarget) else os.stat(target)
+        return os.stat(path).st_dev == target_info.st_dev
     except OSError:
         return None
 

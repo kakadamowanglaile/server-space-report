@@ -55,6 +55,23 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result["状态"], "部分完成")
         self.assertIn("可见", result["范围"])
 
+    def test_journal_filesystem_comparison_keeps_opened_target_after_replacement(self):
+        from space_report.common import DirectoryTarget
+        target = self.root / "target"
+        target.mkdir()
+        held = self.root / "original"
+        descriptor = os.open(target, os.O_RDONLY | os.O_DIRECTORY)
+        self.addCleanup(os.close, descriptor)
+        if os.stat("/dev").st_dev == os.fstat(descriptor).st_dev:
+            self.skipTest("需要与临时目录不同的 /dev 文件系统")
+        selected = DirectoryTarget(str(target), descriptor)
+        target.rename(held)
+        target.symlink_to("/dev", target_is_directory=True)
+        self.assertTrue(services._same_filesystem(str(held), selected),
+                        "必须与已打开的原目录比较，不能使用后来替换的路径")
+        self.assertFalse(services._same_filesystem("/dev", selected))
+        self.assertIsNone(services._same_filesystem(str(self.root / "missing"), selected))
+
     def test_journal_permission_missing_timeout_are_distinguished(self):
         cases = [(completed(returncode=1, stderr="Permission denied: private token"), "权限不足"),
                  (FileNotFoundError(), "工具缺失"),

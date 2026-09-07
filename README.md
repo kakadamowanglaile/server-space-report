@@ -10,6 +10,8 @@ It does not delete files, clear logs, restart services, request elevated privile
 
 **Validation status:** version 0.1.2 has completed the Linux validation described below. It fixes failures under low file-descriptor limits, repeated cancellation, path replacement during checks, and memory growth across repeated scans. The validated scope and remaining limitations are listed explicitly.
 
+**Unreleased fix:** journal-directory filesystem comparisons now retain the originally opened target when its path is replaced during a check. This change is covered by an automated regression and is not part of the historical 0.1.2 integration results below.
+
 ## Quick start
 
 Requires **Linux and Python 3.10 or later**. Clone this repository or extract a source archive, then run these commands from the project root:
