@@ -24,12 +24,14 @@ python3 -B 代码/空间去哪了.py --path / --timeout 30 --output ./reports
 
 The tool creates an independent `空间报告-*` directory when `--output` is supplied, containing `报告.txt` and `报告.json`. Existing reports are not overwritten.
 
-The single-file `.pyz` build also requires Python. If you have downloaded or built that artifact, run:
+The single-file `.pyz` build also requires Python. Download `server-space-report-0.1.2.pyz` from [Release v0.1.2](https://github.com/kakadamowanglaile/server-space-report/releases/tag/v0.1.2), then run these commands from the download directory:
 
 ```sh
-python3 服务器空间去哪了-0.1.2.pyz --help
-python3 服务器空间去哪了-0.1.2.pyz --path /var --deep --output ./reports
+python3 server-space-report-0.1.2.pyz --help
+python3 server-space-report-0.1.2.pyz --path /var --deep --output ./reports
 ```
+
+Local builds made with `工具/构建发布包.py` use the Chinese filename `服务器空间去哪了-0.1.2.pyz`; use that name instead when running a local build. The published source archive is `server-space-report-0.1.2-source.zip`, and its internal Chinese filenames stay unchanged. `release-manifest.json` lists the published artifact sizes and SHA256 hashes.
 
 See [Releases](https://github.com/kakadamowanglaile/server-space-report/releases) for published artifacts and their validation notes. A version mentioned in the source tree may still be a development version.
 

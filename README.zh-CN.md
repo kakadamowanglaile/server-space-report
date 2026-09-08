@@ -22,12 +22,14 @@ python3 -B 代码/空间去哪了.py --path /var --deep
 python3 -B 代码/空间去哪了.py --path / --timeout 30 --output ./排查报告
 ```
 
-单文件包同样需要 Python，下载到本地后执行：
+单文件包同样需要 Python。从 [Release v0.1.2](https://github.com/kakadamowanglaile/server-space-report/releases/tag/v0.1.2) 下载 `server-space-report-0.1.2.pyz` 后，在下载目录执行：
 
 ```sh
-python3 服务器空间去哪了-0.1.2.pyz --help
-python3 服务器空间去哪了-0.1.2.pyz --path /var --deep --output ./排查报告
+python3 server-space-report-0.1.2.pyz --help
+python3 server-space-report-0.1.2.pyz --path /var --deep --output ./排查报告
 ```
+
+通过 `工具/构建发布包.py` 本地构建的文件名仍是 `服务器空间去哪了-0.1.2.pyz`，运行本地构建包时请换成这个名称。公开源码附件名为 `server-space-report-0.1.2-source.zip`，解压后的中文目录及文件名不变；`release-manifest.json` 提供公开附件的大小和 SHA256 摘要。
 
 程序不会自动安装缺失依赖。系统日志检查需要 `journalctl`，Docker 检查需要本机 Docker CLI 和 `/var/run/docker.sock`；缺失会明确显示，其他检查仍继续。普通用户可用，但可能看不到系统日志、容器数据和其他用户的进程。管理员权限由使用者自行决定，程序不会请求密码或自动提权。
 
