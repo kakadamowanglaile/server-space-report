@@ -49,7 +49,9 @@ The system-journal check requires `journalctl`. Docker checks require the local 
 | `--version` | Show the version |
 | `Ctrl+C` | Cancel remaining checks; preserve displayed results and save partial results if an output directory was requested |
 
-Exit codes: `0` means all executed checks completed; `1` means at least one check is incomplete, denied, timed out, or failed; `2` means invalid arguments, an unsupported operating system, or a report-saving failure; `130` means cancellation. Exit code `1` can occur for ordinary users with limited permissions; completed results remain useful.
+Exit codes: `0` means all executed checks completed; `1` means at least one check is incomplete, denied, timed out, or failed; `2` means invalid arguments, an unsupported operating system, or a report-saving failure; `130` means cancellation; `141` means the output pipe's receiving end has closed. Exit code `1` can occur for ordinary users with limited permissions; completed results remain useful.
+
+When piping output to a command that stops reading early, such as `head`, the tool may exit with `141` before finishing the checks or saving the report. To retain a complete report, let the command finish with `--output DIRECTORY`, then inspect the saved files.
 
 ## Interpreting the report
 
