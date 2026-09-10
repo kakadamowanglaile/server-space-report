@@ -201,7 +201,8 @@ def _log_metadata(cid, root_fd, root, target, seen_files, deadline):
         if time.monotonic() >= deadline:
             raise TimeoutError("日志扫描超时")
         try:
-            row["与目标同文件系统"] = os.fstat(directory).st_dev == os.stat(target).st_dev
+            target_info = os.fstat(target.descriptor) if isinstance(target, DirectoryTarget) else os.stat(target)
+            row["与目标同文件系统"] = os.fstat(directory).st_dev == target_info.st_dev
         except OSError:
             row["与目标同文件系统"] = None
         with os.scandir(directory) as entries:

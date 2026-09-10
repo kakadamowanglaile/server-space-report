@@ -129,6 +129,30 @@ class ServiceTests(unittest.TestCase):
         result = self.docker(ids=[CID])
         self.assertEqual(result["数据"]["容器日志"][0]["逻辑字节"], 3)
 
+    def test_container_log_filesystem_keeps_opened_target_after_replacement(self):
+        from space_report.common import DirectoryTarget
+        logdir = self.root / "containers" / CID
+        logdir.mkdir(parents=True)
+        (logdir / (CID + "-json.log")).write_bytes(b"123")
+        target = self.root / "target"
+        target.mkdir()
+        descriptor = os.open(target, os.O_RDONLY | os.O_DIRECTORY)
+        self.addCleanup(os.close, descriptor)
+        root_fd = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY)
+        self.addCleanup(os.close, root_fd)
+        if os.stat("/dev").st_dev == os.fstat(descriptor).st_dev:
+            self.skipTest("需要与临时目录不同的 /dev 文件系统")
+        selected = DirectoryTarget(str(target), descriptor)
+        target.rename(self.root / "original")
+        target.symlink_to("/dev", target_is_directory=True)
+        for selected_target, expected in ((selected, True), (str(target), False),
+                                          (str(self.root / "missing"), None)):
+            with self.subTest(target=str(selected_target), expected=expected):
+                row = services._log_metadata(CID, root_fd, str(self.root), selected_target,
+                                             set(), services.time.monotonic() + 30)
+                self.assertIs(row["与目标同文件系统"], expected)
+                self.assertEqual(row["逻辑字节"], 3)
+
     def test_directory_swap_at_scan_cannot_redirect_to_outside_logs(self):
         logdir = self.root / "containers" / CID
         logdir.mkdir(parents=True)
