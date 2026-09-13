@@ -1,24 +1,23 @@
 """服务采集测试：只替换外部命令，日志使用真实临时文件元数据。"""
 
-import importlib
 from contextlib import contextmanager
 import gzip
 import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 
-try:
-    services = importlib.import_module("space_report.services")
-except ModuleNotFoundError:
-    services = None
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "代码"))
+from space_report import services
 
 
-TEMP_ROOT = Path(__file__).resolve().parents[1] / "测试环境" / "临时"
+TEMP_ROOT = ROOT / "测试环境" / "临时"
 CID = "a" * 64
 
 
@@ -28,7 +27,7 @@ def completed(stdout="", returncode=0, stderr=""):
 
 class ServiceTests(unittest.TestCase):
     def setUp(self):
-        self.assertIsNotNone(services, "服务采集尚未实现，不能给出采集结果")
+        TEMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(prefix="服务测试-", dir=TEMP_ROOT)
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
