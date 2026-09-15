@@ -24,6 +24,8 @@ python3 -B 代码/空间去哪了.py --path / --timeout 30 --output ./reports
 
 The tool creates an independent `空间报告-*` directory when `--output` is supplied, containing `报告.txt` and `报告.json`. Existing reports are not overwritten.
 
+The current source rejects an empty output directory (`--output ""` or `--output=`) with exit code `2` before scanning. When passing a shell variable to `--output`, make sure it contains a directory. Omit `--output` to display results without saving. This validation is not included in the published v0.1.2 build.
+
 The single-file `.pyz` build also requires Python. Download `server-space-report-0.1.2.pyz` from [Release v0.1.2](https://github.com/kakadamowanglaile/server-space-report/releases/tag/v0.1.2), then run these commands from the download directory:
 
 ```sh

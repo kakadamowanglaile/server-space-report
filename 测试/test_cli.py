@@ -112,6 +112,15 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(code, 2)
                 self.assertNotIn("测试项目", out)
 
+    def test_empty_output_directory_is_rejected_before_scanning(self):
+        for output in (["--output", ""], ["--output="]):
+            with self.subTest(output=output):
+                code, out, err = self.invoke(["--path", str(self.path)] + output)
+                self.assertEqual(code, 2)
+                self.assertEqual(out, "")
+                self.assertIn("保存目录不能为空", err)
+                self.assertEqual(list(self.path.iterdir()), [])
+
     def test_unsupported_os_does_not_scan(self):
         with patch.object(self.mod.sys, "platform", "darwin"), contextlib.redirect_stderr(io.StringIO()) as err:
             code = self.mod.main([], collectors=[("分区容量", complete)])

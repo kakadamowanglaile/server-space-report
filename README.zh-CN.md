@@ -22,6 +22,8 @@ python3 -B 代码/空间去哪了.py --path /var --deep
 python3 -B 代码/空间去哪了.py --path / --timeout 30 --output ./排查报告
 ```
 
+当前源码会在扫描前拒绝空的保存目录（`--output ""` 或 `--output=`），并返回退出码 `2`。通过 Shell 变量传入 `--output` 时，请确认变量包含目录；只显示结果而不保存时，应省略 `--output`。已发布的 v0.1.2 包尚不包含这项检查。
+
 单文件包同样需要 Python。从 [Release v0.1.2](https://github.com/kakadamowanglaile/server-space-report/releases/tag/v0.1.2) 下载 `server-space-report-0.1.2.pyz` 后，在下载目录执行：
 
 ```sh
