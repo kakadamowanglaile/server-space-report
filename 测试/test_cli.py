@@ -121,6 +121,15 @@ class CliTests(unittest.TestCase):
                 self.assertIn("保存目录不能为空", err)
                 self.assertEqual(list(self.path.iterdir()), [])
 
+    def test_empty_target_directory_is_rejected_before_deep_scan(self):
+        for target in (["--path", ""], ["--path="]):
+            with self.subTest(target=target):
+                code, out, err = self.invoke(target + ["--deep"])
+                self.assertEqual(code, 2)
+                self.assertEqual(out, "")
+                self.assertIn("目标目录不能为空", err)
+                self.assertEqual(list(self.path.iterdir()), [])
+
     def test_unsupported_os_does_not_scan(self):
         with patch.object(self.mod.sys, "platform", "darwin"), contextlib.redirect_stderr(io.StringIO()) as err:
             code = self.mod.main([], collectors=[("分区容量", complete)])

@@ -310,6 +310,8 @@ def _main(argv=None, *, collectors=None):
     descriptor = None
     try:
         args = parser().parse_args(argv)
+        if args.path == "":
+            raise ValueError("目标目录不能为空；请为 --path 指定目录，或省略该参数检查 /")
         if args.output == "":
             raise ValueError("保存目录不能为空；请为 --output 指定目录，或省略该参数仅显示报告")
         if sys.platform != "linux":
