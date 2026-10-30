@@ -4,6 +4,7 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -35,16 +36,38 @@ class FilesystemTests(unittest.TestCase):
         return rows + (extra or [])
 
     def test_partition_reports_actual_available_space_and_inode_counts(self):
-        # 错用 f_bfree 代替普通用户可用空间，或漏报文件节点，会使本测试失败。
-        expected = os.statvfs(self.root)
-        with mock.patch.object(fs, "_read_mountinfo", return_value=self.mounts()):
+        # 用采集器实际读到的那份快照核对，避免两次真实读取之间磁盘占用变化。
+        original_statvfs = os.statvfs
+        observed = []
+        def capture(path):
+            result = original_statvfs(path)
+            observed.append(result)
+            return result
+        with mock.patch.object(fs, "_read_mountinfo", return_value=self.mounts()), \
+                mock.patch.object(fs.os, "statvfs", side_effect=capture) as statvfs:
             report = fs.collect_partition(str(self.root))
+        statvfs.assert_called_once_with(str(self.root))
+        expected = observed[0]
+        block = expected.f_frsize or expected.f_bsize
         data = report["数据"]
         self.assertEqual(report["状态"], "完成")
-        self.assertEqual(data["总字节"], expected.f_blocks * expected.f_frsize)
-        self.assertEqual(data["已用字节"], (expected.f_blocks - expected.f_bfree) * expected.f_frsize)
-        self.assertGreaterEqual(data["可用字节"], 0)
-        self.assertEqual(data["总文件节点"], expected.f_files)
+        self.assertEqual(data["总字节"], expected.f_blocks * block)
+        self.assertEqual(data["已用字节"], max(0, expected.f_blocks - expected.f_bfree) * block)
+        self.assertEqual(data["可用字节"], max(0, expected.f_bavail) * block)
+        self.assertEqual(data["空闲字节"], max(0, expected.f_bfree) * block)
+        self.assertEqual(data["总文件节点"], expected.f_files if expected.f_files > 0 else None)
+        self.assertEqual(data["已用文件节点"], max(0, expected.f_files - expected.f_ffree) if expected.f_files > 0 else None)
+        self.assertEqual(data["可用文件节点"], max(0, expected.f_favail) if expected.f_files > 0 else None)
+
+    def test_partition_distinguishes_user_available_from_all_free_blocks(self):
+        info = SimpleNamespace(f_blocks=100, f_bfree=80, f_bavail=25, f_frsize=4096,
+                               f_bsize=512, f_files=100, f_ffree=40, f_favail=30)
+        with mock.patch.object(fs, "_read_mountinfo", return_value=self.mounts()), \
+                mock.patch.object(fs.os, "statvfs", return_value=info):
+            report = fs.collect_partition(str(self.root))
+        self.assertEqual(report["状态"], "完成")
+        self.assertEqual(report["数据"]["可用字节"], 25 * 4096)
+        self.assertEqual(report["数据"]["空闲字节"], 80 * 4096)
 
     def test_partition_missing_path_returns_failure_instead_of_raising(self):
         report = fs.collect_partition(str(self.root / "不存在"))
