@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import platform
 import signal
+import stat
 import sys
 import time
 import uuid
@@ -231,6 +232,23 @@ def _open_output_root(root):
         raise
 
 
+def _check_output_root(destination):
+    """扫描前拒绝已存在的无效路径分量；保存时仍需重新安全打开。"""
+    root = Path(os.path.abspath(destination))
+    current = Path(root.anchor)
+    for part in root.parts[1:]:
+        current /= part
+        try:
+            mode = current.lstat().st_mode
+        except FileNotFoundError:
+            # 后续目录可由保存流程创建，不在预检时写入文件系统。
+            break
+        if stat.S_ISLNK(mode):
+            raise ValueError("保存目录路径不能经过符号链接")
+        if not stat.S_ISDIR(mode):
+            raise ValueError("保存目录路径中已有非目录文件")
+
+
 def save_report(report, destination):
     root = Path(os.path.abspath(destination))
     payloads = {"报告.txt": render_report(report),
@@ -322,6 +340,8 @@ def _main(argv=None, *, collectors=None):
             raise ValueError("目标路径不能经过符号链接；请直接指定真实目录")
         if not candidate.is_dir():
             raise ValueError("目标目录不存在、不可访问或不是目录")
+        if args.output is not None:
+            _check_output_root(args.output)
         descriptor = open_directory(str(candidate), metadata=True)
     except (ValueError, OSError) as error:
         print(safe_text(error), file=sys.stderr)

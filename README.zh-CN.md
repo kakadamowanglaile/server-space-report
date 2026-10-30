@@ -24,6 +24,8 @@ python3 -B 代码/空间去哪了.py --path / --timeout 30 --output ./排查报�
 
 当前源码会在扫描前拒绝空的保存目录（`--output ""` 或 `--output=`），并返回退出码 `2`。通过 Shell 变量传入 `--output` 时，请确认变量包含目录；只显示结果而不保存时，应省略 `--output`。已发布的 v0.1.2 包尚不包含这项检查。
 
+当前源码还会在扫描前检查 `--output` 路径中已存在的各级目录。遇到符号链接或普通文件时，不启动检查并返回退出码 `2`。尚不存在的目录仍在保存时创建；保存时会再次校验路径，以防预检后发生变化。已发布的 v0.1.2 包尚不包含这项提前校验。
+
 当前源码也会在扫描前拒绝空的目标目录（`--path ""` 或 `--path=`），并返回退出码 `2`。通过 Shell 变量传入 `--path` 时，请确认变量是预期目录，尤其在使用 `--deep` 时；省略 `--path` 才会检查 `/`。已发布的 v0.1.2 包尚不包含这项检查。
 
 单文件包同样需要 Python。从 [Release v0.1.2](https://github.com/kakadamowanglaile/server-space-report/releases/tag/v0.1.2) 下载 `server-space-report-0.1.2.pyz` 后，在下载目录执行：

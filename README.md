@@ -26,6 +26,8 @@ The tool creates an independent `空间报告-*` directory when `--output` is su
 
 The current source rejects an empty output directory (`--output ""` or `--output=`) with exit code `2` before scanning. When passing a shell variable to `--output`, make sure it contains a directory. Omit `--output` to display results without saving. This validation is not included in the published v0.1.2 build.
 
+The current source also checks existing components of `--output` before scanning. A symlink or regular file in that path causes exit code `2` without starting checks. Missing directories are still created when saving; the save operation checks the path again in case it changes after the initial check. This early validation is not included in the published v0.1.2 build.
+
 The current source also rejects an empty target directory (`--path ""` or `--path=`) with exit code `2` before scanning. Check that a shell variable passed to `--path` contains the intended directory, especially with `--deep`; omit `--path` to check `/`. This validation is not included in the published v0.1.2 build.
 
 The single-file `.pyz` build also requires Python. Download `server-space-report-0.1.2.pyz` from [Release v0.1.2](https://github.com/kakadamowanglaile/server-space-report/releases/tag/v0.1.2), then run these commands from the download directory:

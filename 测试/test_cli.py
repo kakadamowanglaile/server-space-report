@@ -69,9 +69,11 @@ class CliTests(unittest.TestCase):
     def test_output_failure_is_explicit_and_not_success(self):
         destination = self.path / "已有文件"
         destination.write_text("保留我")
-        code, out, err = self.invoke(["--path", str(self.path), "--output", str(destination)])
+        with patch.object(self.mod, "run_bounded", side_effect=AssertionError("不应开始检查")) as run_bounded:
+            code, out, err = self.invoke(["--path", str(self.path), "--output", str(destination)])
         self.assertEqual(code, 2)
-        self.assertIn("保存失败", err)
+        run_bounded.assert_not_called()
+        self.assertIn("保存目录", err)
         self.assertNotIn("报告已保存", out)
         self.assertEqual(destination.read_text(), "保留我")
 
@@ -101,9 +103,22 @@ class CliTests(unittest.TestCase):
         actual.mkdir()
         shortcut = self.path / "目录链接"
         shortcut.symlink_to(actual, target_is_directory=True)
-        code, out, err = self.invoke(["--path", str(self.path), "--output", str(shortcut / "不能创建")])
+        with patch.object(self.mod, "run_bounded", side_effect=AssertionError("不应开始检查")) as run_bounded:
+            code, out, err = self.invoke(["--path", str(self.path), "--output", str(shortcut / "不能创建")])
         self.assertEqual(code, 2)
+        run_bounded.assert_not_called()
+        self.assertIn("保存目录", err)
         self.assertEqual(list(actual.iterdir()), [])
+
+    def test_report_output_file_ancestor_is_rejected_before_scanning(self):
+        parent = self.path / "普通文件"
+        parent.write_text("保留我")
+        with patch.object(self.mod, "run_bounded", side_effect=AssertionError("不应开始检查")) as run_bounded:
+            code, out, err = self.invoke(["--path", str(self.path), "--output", str(parent / "不能创建")])
+        self.assertEqual(code, 2)
+        run_bounded.assert_not_called()
+        self.assertIn("保存目录", err)
+        self.assertEqual(parent.read_text(), "保留我")
 
     def test_invalid_arguments_do_not_start_checks(self):
         for args in [["--timeout", "0"], ["--timeout", "nan"], ["--timeout", "inf"], ["--timeout", "-1"], ["--path", str(self.path / "不存在")]]:
