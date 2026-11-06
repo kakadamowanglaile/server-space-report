@@ -380,6 +380,9 @@ def _run_report(args, candidate, collectors):
         try:
             folder = save_report(report, args.output)
             print(f"报告已保存：{safe_text(folder)}", flush=True)
+        except KeyboardInterrupt:
+            print("保存期间已取消；报告未确认完整，保存目录中可能留有未写完整的文件。", file=sys.stderr)
+            return 130
         except (OSError, ValueError) as error:
             print(f"报告保存失败：{safe_text(error)}。终端结果仍可查看；目标目录可能保留未写完整的文件。", file=sys.stderr)
             return 130 if report["已取消"] else 2

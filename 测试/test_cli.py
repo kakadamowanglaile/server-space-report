@@ -269,6 +269,36 @@ class CliTests(unittest.TestCase):
         self.assertTrue(data["已取消"])
         self.assertEqual(len(data["检查结果"]), 1)
 
+    def test_interrupt_during_report_save_returns_cancelled_without_success_claim(self):
+        destination = self.path / "保存中取消"
+        original_fsync = os.fsync
+        interrupted = False
+
+        def interrupt_first_sync(fd):
+            nonlocal interrupted
+            if not interrupted:
+                interrupted = True
+                signal.raise_signal(signal.SIGINT)
+            return original_fsync(fd)
+
+        previous_handler = signal.getsignal(signal.SIGINT)
+        try:
+            signal.signal(signal.SIGINT, signal.default_int_handler)
+            with patch.object(self.mod.os, "fsync", side_effect=interrupt_first_sync):
+                code, out, err = self.invoke(["--path", str(self.path), "--output", str(destination)])
+        finally:
+            signal.signal(signal.SIGINT, previous_handler)
+        self.assertTrue(interrupted)
+        self.assertEqual(code, 130)
+        self.assertIn("保存期间已取消", err)
+        self.assertIn("未确认完整", err)
+        self.assertNotIn("Traceback", err)
+        self.assertNotIn("报告已保存", out)
+        folders = list(destination.glob("空间报告-*"))
+        self.assertEqual(len(folders), 1)
+        self.assertTrue((folders[0] / "报告.txt").exists())
+        self.assertFalse((folders[0] / "报告.json").exists())
+
     def test_symlink_target_is_rejected_without_scan(self):
         target = self.path / "实际目录"
         target.mkdir()

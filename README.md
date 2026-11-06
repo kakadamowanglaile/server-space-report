@@ -53,9 +53,11 @@ The system-journal check requires `journalctl`. Docker checks require the local 
 | `--timeout SECONDS` | Per-check time limit, default 30 seconds; returning partial results may require a short additional handoff interval |
 | `--output DIRECTORY` | Save text and JSON reports in a new timestamped subdirectory; symlink components are rejected |
 | `--version` | Show the version |
-| `Ctrl+C` | Cancel remaining checks; preserve displayed results and save partial results if an output directory was requested |
+| `Ctrl+C` | Cancel remaining checks; preserve displayed results and, when interrupted during scanning, attempt to save partial results if an output directory was requested |
 
 Exit codes: `0` means all executed checks completed; `1` means at least one check is incomplete, denied, timed out, or failed; `2` means invalid arguments, an unsupported operating system, or a report-saving failure; `130` means cancellation; `141` means the output pipe's receiving end has closed. Exit code `1` can occur for ordinary users with limited permissions; completed results remain useful.
+
+If cancellation occurs while the report is being saved, the tool returns `130` and says that saving was not confirmed. The output directory may contain incomplete files; check both report files before using them.
 
 When piping output to a command that stops reading early, such as `head`, the tool may exit with `141` before finishing the checks or saving the report. To retain a complete report, let the command finish with `--output DIRECTORY`, then inspect the saved files.
 
